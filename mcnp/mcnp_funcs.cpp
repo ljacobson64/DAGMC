@@ -457,6 +457,7 @@ void write_lcad_old(std::ofstream &lcadfile)
   mcnp5_keywords.push_back( "imp.n" );
   mcnp5_keywords.push_back( "imp.p" );
   mcnp5_keywords.push_back( "imp.e" );
+  mcnp5_keywords.push_back( "bflcl" );
   mcnp5_keywords.push_back( "tally" );
   mcnp5_keywords.push_back( "spec.reflect" );
   mcnp5_keywords.push_back( "white.reflect" );
@@ -478,6 +479,8 @@ void write_lcad_old(std::ofstream &lcadfile)
   int cmat = 0;
   double crho = 0;
   double cimp_n = 0, cimp_p = 0, cimp_e = 0;
+  double cbflcl = 0;
+  bool chas_bflcl = false;
 
   // Detect which importances are used so all cells, including implicit
   // complement and graveyard, have these importances
@@ -545,6 +548,11 @@ void write_lcad_old(std::ofstream &lcadfile)
         if( imp_n_needed ) cimp_n = imp_n;
         if( imp_p_needed ) cimp_p = imp_p;
         if( imp_e_needed ) cimp_e = imp_e;
+        if( DAG->has_prop(vol, "bflcl") ) {
+          chas_bflcl = true;
+          get_real_prop( vol, cellid, "bflcl", cbflcl);
+        }
+        std::cout << "Detected magnetic field number specified for implicit complement: " << cbflcl << std::endl;
       }
     } else if( DAG->is_implicit_complement(vol) ) {
       lcadfile << " " << cmat;
@@ -552,6 +560,7 @@ void write_lcad_old(std::ofstream &lcadfile)
       if( imp_n_needed ) lcadfile << " imp:n=" << cimp_n;
       if( imp_p_needed ) lcadfile << " imp:p=" << cimp_p;
       if( imp_e_needed ) lcadfile << " imp:e=" << cimp_e;
+      if( chas_bflcl ) lcadfile << " bflcl=" << cbflcl;
       lcadfile << " $ implicit complement";
     } else {
       int mat = 0;
@@ -567,6 +576,12 @@ void write_lcad_old(std::ofstream &lcadfile)
       if( imp_n_needed ) lcadfile << " imp:n=" << imp_n;
       if( imp_p_needed ) lcadfile << " imp:p=" << imp_p;
       if( imp_e_needed ) lcadfile << " imp:e=" << imp_e;
+
+      if ( DAG->has_prop(vol, "bflcl") ) {
+        double bflcl = 0;
+        get_real_prop( vol, cellid, "bflcl", bflcl);
+        lcadfile << " bflcl=" << bflcl;
+      }
     }
 
     lcadfile << std::endl;
