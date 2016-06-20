@@ -457,6 +457,12 @@ void write_lcad_old(std::ofstream &lcadfile)
   mcnp5_keywords.push_back( "imp.n" );
   mcnp5_keywords.push_back( "imp.p" );
   mcnp5_keywords.push_back( "imp.e" );
+  mcnp5_keywords.push_back( "fcl.n" );
+  mcnp5_keywords.push_back( "fcl.p" );
+  mcnp5_keywords.push_back( "fcl.e" );
+  mcnp5_keywords.push_back( "elpt.n" );
+  mcnp5_keywords.push_back( "elpt.p" );
+  mcnp5_keywords.push_back( "elpt.e" );
   mcnp5_keywords.push_back( "bflcl" );
   mcnp5_keywords.push_back( "tally" );
   mcnp5_keywords.push_back( "spec.reflect" );
@@ -479,7 +485,11 @@ void write_lcad_old(std::ofstream &lcadfile)
   int cmat = 0;
   double crho = 0;
   double cimp_n = 0, cimp_p = 0, cimp_e = 0;
+  double cfcl_n = 0, cfcl_p = 0, cfcl_e = 0;
+  double celpt_n = 0, celpt_p = 0, celpt_e = 0;
   double cbflcl = 0;
+  bool chas_fcl_n = false, chas_fcl_p = false, chas_fcl_e = false;
+  bool chas_elpt_n = false, chas_elpt_p = false, chas_elpt_e = false;
   bool chas_bflcl = false;
 
   // Detect which importances are used so all cells, including implicit
@@ -548,11 +558,41 @@ void write_lcad_old(std::ofstream &lcadfile)
         if( imp_n_needed ) cimp_n = imp_n;
         if( imp_p_needed ) cimp_p = imp_p;
         if( imp_e_needed ) cimp_e = imp_e;
+        if( DAG->has_prop(vol, "fcl.n") ) {
+          chas_fcl_n = true;
+          get_real_prop( vol, cellid, "fcl.n", cfcl_n);
+          std::cout << "Detected neutron forced collision info specified for implicit complement: " << cfcl_n << std::endl;
+        }
+        if( DAG->has_prop(vol, "fcl.p") ) {
+          chas_fcl_p = true;
+          get_real_prop( vol, cellid, "fcl.p", cfcl_p);
+          std::cout << "Detected photon forced collision info specified for implicit complement: " << cfcl_p << std::endl;
+        }
+        if( DAG->has_prop(vol, "fcl.e") ) {
+          chas_fcl_e = true;
+          get_real_prop( vol, cellid, "fcl.e", cfcl_e);
+          std::cout << "Detected electron forced collision info specified for implicit complement: " << cfcl_e << std::endl;
+        }
+        if( DAG->has_prop(vol, "elpt.n") ) {
+          chas_elpt_n = true;
+          get_real_prop( vol, cellid, "elpt.n", celpt_n);
+          std::cout << "Detected neutron energy cutoff specified for implicit complement: " << celpt_n << std::endl;
+        }
+        if( DAG->has_prop(vol, "elpt.p") ) {
+          chas_elpt_p = true;
+          get_real_prop( vol, cellid, "elpt.p", celpt_p);
+          std::cout << "Detected photon energy cutoff specified for implicit complement: " << celpt_p << std::endl;
+        }
+        if( DAG->has_prop(vol, "elpt.e") ) {
+          chas_elpt_e = true;
+          get_real_prop( vol, cellid, "elpt.e", celpt_e);
+          std::cout << "Detected electron energy cutoff specified for implicit complement: " << celpt_e << std::endl;
+        }
         if( DAG->has_prop(vol, "bflcl") ) {
           chas_bflcl = true;
           get_real_prop( vol, cellid, "bflcl", cbflcl);
+          std::cout << "Detected magnetic field number specified for implicit complement: " << cbflcl << std::endl;
         }
-        std::cout << "Detected magnetic field number specified for implicit complement: " << cbflcl << std::endl;
       }
     } else if( DAG->is_implicit_complement(vol) ) {
       lcadfile << " " << cmat;
@@ -560,6 +600,12 @@ void write_lcad_old(std::ofstream &lcadfile)
       if( imp_n_needed ) lcadfile << " imp:n=" << cimp_n;
       if( imp_p_needed ) lcadfile << " imp:p=" << cimp_p;
       if( imp_e_needed ) lcadfile << " imp:e=" << cimp_e;
+      if( chas_fcl_n ) lcadfile << " fcl:n=" << cfcl_n;
+      if( chas_fcl_p ) lcadfile << " fcl:p=" << cfcl_p;
+      if( chas_fcl_e ) lcadfile << " fcl:e=" << cfcl_e;
+      if( chas_elpt_n ) lcadfile << " elpt:n=" << celpt_n;
+      if( chas_elpt_p ) lcadfile << " elpt:p=" << celpt_p;
+      if( chas_elpt_e ) lcadfile << " elpt:e=" << celpt_e;
       if( chas_bflcl ) lcadfile << " bflcl=" << cbflcl;
       lcadfile << " $ implicit complement";
     } else {
@@ -577,6 +623,36 @@ void write_lcad_old(std::ofstream &lcadfile)
       if( imp_p_needed ) lcadfile << " imp:p=" << imp_p;
       if( imp_e_needed ) lcadfile << " imp:e=" << imp_e;
 
+      if ( DAG->has_prop(vol, "fcl.n") ) {
+        double fcl_n = 0;
+        get_real_prop( vol, cellid, "fcl.n", fcl_n);
+        lcadfile << " fcl:n=" << fcl_n;
+      }
+      if ( DAG->has_prop(vol, "fcl.p") ) {
+        double fcl_p = 0;
+        get_real_prop( vol, cellid, "fcl.p", fcl_p);
+        lcadfile << " fcl:p=" << fcl_p;
+      }
+      if ( DAG->has_prop(vol, "fcl.e") ) {
+        double fcl_e = 0;
+        get_real_prop( vol, cellid, "fcl.e", fcl_e);
+        lcadfile << " fcl:e=" << fcl_e;
+      }
+      if ( DAG->has_prop(vol, "elpt.n") ) {
+        double elpt_n = 0;
+        get_real_prop( vol, cellid, "elpt.n", elpt_n);
+        lcadfile << " elpt:n=" << elpt_n;
+      }
+      if ( DAG->has_prop(vol, "elpt.p") ) {
+        double elpt_p = 0;
+        get_real_prop( vol, cellid, "elpt.p", elpt_p);
+        lcadfile << " elpt:p=" << elpt_p;
+      }
+      if ( DAG->has_prop(vol, "elpt.e") ) {
+        double elpt_e = 0;
+        get_real_prop( vol, cellid, "elpt.e", elpt_e);
+        lcadfile << " elpt:e=" << elpt_e;
+      }
       if ( DAG->has_prop(vol, "bflcl") ) {
         double bflcl = 0;
         get_real_prop( vol, cellid, "bflcl", bflcl);
@@ -854,6 +930,15 @@ void dagmc_particle_terminate_( )
   std::cout << "particle_terminate:" << std::endl;
 #endif
 }
+
+//void dagmc_rollback_history_( )
+//{
+//  history.reset_to_last_intersection();
+//
+//#ifdef TRACE_DAGMC_CALLS
+//  std::cout << "particle_reset_to_last_intersection:" << std::endl;
+//#endif
+//}
 
 // *ih              - volue index
 // *uuu, *vvv, *www - ray direction
