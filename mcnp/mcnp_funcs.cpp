@@ -484,32 +484,23 @@ void write_lcad_old(std::ofstream &lcadfile)
 
   int cmat = 0;
   double crho = 0;
-  double cimp_n = 0, cimp_p = 0, cimp_e = 0;
-  double cfcl_n = 0, cfcl_p = 0, cfcl_e = 0;
-  double celpt_n = 0, celpt_p = 0, celpt_e = 0;
-  double cbflcl = 0;
-  bool chas_fcl_n = false, chas_fcl_p = false, chas_fcl_e = false;
-  bool chas_elpt_n = false, chas_elpt_p = false, chas_elpt_e = false;
+  std::map<char, double> cimp;  // importances
+  std::map<char, int> cfcl;  // forced collisions
+  std::map<char, double> celpt;  // energy cutoffs
+  int cbflcl = 0;  // magnetic fields
   bool chas_bflcl = false;
 
   // Detect which importances are used so all cells, including implicit
   // complement and graveyard, have these importances
-  bool imp_n_needed = false, imp_p_needed = false, imp_e_needed = false;
   for( int i = 1; i <= num_cells; ++i ) {
-    moab::EntityHandle vol = DAG->entity_by_index( 3, i );
-    if( DAG->has_prop( vol, "imp.n" )) {
-      imp_n_needed = true;
-      cimp_n = 1;
-    }
-    if( DAG->has_prop( vol, "imp.p" )) {
-      imp_p_needed = true;
-      cimp_p = 1;
-    }
-    if( DAG->has_prop( vol, "imp.e" )) {
-      imp_e_needed = true;
-      cimp_e = 1;
-    }
+    moab::EntityHandle vol = DAG->entity_by_index(3, i);
+    if( DAG->has_prop( vol, "imp.n" )) cimp['n'] = 1;
+    if( DAG->has_prop( vol, "imp.p" )) cimp['p'] = 1;
+    if( DAG->has_prop( vol, "imp.e" )) cimp['e'] = 1;
   }
+
+  // If no importances specified, default to neutron mode
+  if ( cimp.empty() ) cimp['n'] = 1;
 
   // write the cell cards
   for( int i = 1; i <= num_cells; ++i ) {
@@ -517,145 +508,87 @@ void write_lcad_old(std::ofstream &lcadfile)
     moab::EntityHandle vol = DAG->entity_by_index( 3, i );
     int cellid = DAG->id_by_index( 3, i );
 
-    // Set default importances
-    double imp_n = cimp_n, imp_p = cimp_p, imp_e = cimp_e;
-
-    // Get importances from DAGMC
-    if( DAG->has_prop( vol, "imp.n" )) {
-      get_real_prop( vol, cellid, "imp.n", imp_n );
-    }
-
-    if( DAG->has_prop( vol, "imp.p" )) {
-      get_real_prop( vol, cellid, "imp.p", imp_p );
-    }
-
-    if( DAG->has_prop( vol, "imp.e" )) {
-      get_real_prop( vol, cellid, "imp.e", imp_e );
-    }
-
-    // If no importances specified, default to neutron mode
-    if ( ! imp_n_needed && ! imp_p_needed && ! imp_e_needed ) {
-      imp_n_needed = true;
-      cimp_n = 1;
-      imp_n = 1;
-    }
-
     lcadfile << cellid;
 
-    bool graveyard = DAG->has_prop( vol, "graveyard" );
-
-    if( graveyard ) {
+    if( DAG->has_prop(vol, "graveyard") ) {
+      // graveyard
       lcadfile << " 0";
-      if( imp_n_needed ) lcadfile << " imp:n=0";
-      if( imp_p_needed ) lcadfile << " imp:p=0";
-      if( imp_e_needed ) lcadfile << " imp:e=0";
+      // importance = 0 for all particle types
+      for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
+        lcadfile << " imp:" << it->first << "=0";
       lcadfile << " $ graveyard";
+
       if( DAG->has_prop(vol, "comp") ) {
-        // material for the implicit complement has been specified.
-        get_int_prop( vol, cellid, "mat", cmat );
-        get_real_prop( vol, cellid, "rho", crho );
+        // information for the implicit complement has been specified
+        get_int_prop(vol, cellid, "mat", cmat);
+        get_real_prop(vol, cellid, "rho", crho);
         std::cout << "Detected material and density specified for implicit complement: " << cmat << ", " << crho << std::endl;
-        if( imp_n_needed ) cimp_n = imp_n;
-        if( imp_p_needed ) cimp_p = imp_p;
-        if( imp_e_needed ) cimp_e = imp_e;
-        if( DAG->has_prop(vol, "fcl.n") ) {
-          chas_fcl_n = true;
-          get_real_prop( vol, cellid, "fcl.n", cfcl_n);
-          std::cout << "Detected neutron forced collision info specified for implicit complement: " << cfcl_n << std::endl;
-        }
-        if( DAG->has_prop(vol, "fcl.p") ) {
-          chas_fcl_p = true;
-          get_real_prop( vol, cellid, "fcl.p", cfcl_p);
-          std::cout << "Detected photon forced collision info specified for implicit complement: " << cfcl_p << std::endl;
-        }
-        if( DAG->has_prop(vol, "fcl.e") ) {
-          chas_fcl_e = true;
-          get_real_prop( vol, cellid, "fcl.e", cfcl_e);
-          std::cout << "Detected electron forced collision info specified for implicit complement: " << cfcl_e << std::endl;
-        }
-        if( DAG->has_prop(vol, "elpt.n") ) {
-          chas_elpt_n = true;
-          get_real_prop( vol, cellid, "elpt.n", celpt_n);
-          std::cout << "Detected neutron energy cutoff specified for implicit complement: " << celpt_n << std::endl;
-        }
-        if( DAG->has_prop(vol, "elpt.p") ) {
-          chas_elpt_p = true;
-          get_real_prop( vol, cellid, "elpt.p", celpt_p);
-          std::cout << "Detected photon energy cutoff specified for implicit complement: " << celpt_p << std::endl;
-        }
-        if( DAG->has_prop(vol, "elpt.e") ) {
-          chas_elpt_e = true;
-          get_real_prop( vol, cellid, "elpt.e", celpt_e);
-          std::cout << "Detected electron energy cutoff specified for implicit complement: " << celpt_e << std::endl;
-        }
+
+        if( DAG->has_prop(vol, "imp.n") ) get_real_prop(vol, cellid, "imp.n", cimp['n']);
+        if( DAG->has_prop(vol, "imp.p") ) get_real_prop(vol, cellid, "imp.p", cimp['p']);
+        if( DAG->has_prop(vol, "imp.e") ) get_real_prop(vol, cellid, "imp.e", cimp['e']);
+        if( DAG->has_prop(vol, "fcl.n") ) get_int_prop(vol, cellid, "fcl.n", cfcl['n']);
+        if( DAG->has_prop(vol, "fcl.p") ) get_int_prop(vol, cellid, "fcl.p", cfcl['p']);
+        if( DAG->has_prop(vol, "fcl.e") ) get_int_prop(vol, cellid, "fcl.e", cfcl['e']);
+        if( DAG->has_prop(vol, "elpt.n") ) get_real_prop(vol, cellid, "elpt.n", celpt['n']);
+        if( DAG->has_prop(vol, "elpt.p") ) get_real_prop(vol, cellid, "elpt.p", celpt['p']);
+        if( DAG->has_prop(vol, "elpt.e") ) get_real_prop(vol, cellid, "elpt.e", celpt['e']);
         if( DAG->has_prop(vol, "bflcl") ) {
           chas_bflcl = true;
-          get_real_prop( vol, cellid, "bflcl", cbflcl);
-          std::cout << "Detected magnetic field number specified for implicit complement: " << cbflcl << std::endl;
+          get_int_prop( vol, cellid, "bflcl", cbflcl);
         }
       }
     } else if( DAG->is_implicit_complement(vol) ) {
+      // implicit complement
       lcadfile << " " << cmat;
       if( cmat != 0 ) lcadfile << " " << crho;
-      if( imp_n_needed ) lcadfile << " imp:n=" << cimp_n;
-      if( imp_p_needed ) lcadfile << " imp:p=" << cimp_p;
-      if( imp_e_needed ) lcadfile << " imp:e=" << cimp_e;
-      if( chas_fcl_n ) lcadfile << " fcl:n=" << cfcl_n;
-      if( chas_fcl_p ) lcadfile << " fcl:p=" << cfcl_p;
-      if( chas_fcl_e ) lcadfile << " fcl:e=" << cfcl_e;
-      if( chas_elpt_n ) lcadfile << " elpt:n=" << celpt_n;
-      if( chas_elpt_p ) lcadfile << " elpt:p=" << celpt_p;
-      if( chas_elpt_e ) lcadfile << " elpt:e=" << celpt_e;
+      for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
+        lcadfile << " imp:" << it->first << "=" << it->second;
+      for (std::map<char,int>::iterator it = cfcl.begin(); it != cfcl.end(); ++it)
+        lcadfile << " fcl:" << it->first << "=" << it->second;
+      for (std::map<char,double>::iterator it = celpt.begin(); it != celpt.end(); ++it)
+        lcadfile << " elpt:" << it->first << "=" << it->second;
       if( chas_bflcl ) lcadfile << " bflcl=" << cbflcl;
       lcadfile << " $ implicit complement";
     } else {
+      // regular cell
       int mat = 0;
-      get_int_prop( vol, cellid, "mat", mat );
-
-      if( mat == 0 ) {
-        lcadfile << " 0";
-      } else {
+      get_int_prop(vol, cellid, "mat", mat);
+      if( mat == 0 ) lcadfile << " 0";
+      else {
         double rho = 1.0;
-        get_real_prop( vol, cellid, "rho", rho );
+        get_real_prop(vol, cellid, "rho", rho);
         lcadfile << " " << mat << " " << rho;
       }
-      if( imp_n_needed ) lcadfile << " imp:n=" << imp_n;
-      if( imp_p_needed ) lcadfile << " imp:p=" << imp_p;
-      if( imp_e_needed ) lcadfile << " imp:e=" << imp_e;
 
-      if ( DAG->has_prop(vol, "fcl.n") ) {
-        double fcl_n = 0;
-        get_real_prop( vol, cellid, "fcl.n", fcl_n);
-        lcadfile << " fcl:n=" << fcl_n;
-      }
-      if ( DAG->has_prop(vol, "fcl.p") ) {
-        double fcl_p = 0;
-        get_real_prop( vol, cellid, "fcl.p", fcl_p);
-        lcadfile << " fcl:p=" << fcl_p;
-      }
-      if ( DAG->has_prop(vol, "fcl.e") ) {
-        double fcl_e = 0;
-        get_real_prop( vol, cellid, "fcl.e", fcl_e);
-        lcadfile << " fcl:e=" << fcl_e;
-      }
-      if ( DAG->has_prop(vol, "elpt.n") ) {
-        double elpt_n = 0;
-        get_real_prop( vol, cellid, "elpt.n", elpt_n);
-        lcadfile << " elpt:n=" << elpt_n;
-      }
-      if ( DAG->has_prop(vol, "elpt.p") ) {
-        double elpt_p = 0;
-        get_real_prop( vol, cellid, "elpt.p", elpt_p);
-        lcadfile << " elpt:p=" << elpt_p;
-      }
-      if ( DAG->has_prop(vol, "elpt.e") ) {
-        double elpt_e = 0;
-        get_real_prop( vol, cellid, "elpt.e", elpt_e);
-        lcadfile << " elpt:e=" << elpt_e;
-      }
-      if ( DAG->has_prop(vol, "bflcl") ) {
-        double bflcl = 0;
-        get_real_prop( vol, cellid, "bflcl", bflcl);
+      std::map<char, double> imp;
+      std::map<char, int> fcl;
+      std::map<char, double> elpt;
+
+      // default to importance = 1 if not specified
+      for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
+        imp[it->first] = 1;
+
+      if( DAG->has_prop(vol, "imp.n") ) get_real_prop(vol, cellid, "imp.n", imp['n']);
+      if( DAG->has_prop(vol, "imp.p") ) get_real_prop(vol, cellid, "imp.p", imp['p']);
+      if( DAG->has_prop(vol, "imp.e") ) get_real_prop(vol, cellid, "imp.e", imp['e']);
+      if( DAG->has_prop(vol, "fcl.n") ) get_int_prop(vol, cellid, "fcl.n", fcl['n']);
+      if( DAG->has_prop(vol, "fcl.p") ) get_int_prop(vol, cellid, "fcl.p", fcl['p']);
+      if( DAG->has_prop(vol, "fcl.e") ) get_int_prop(vol, cellid, "fcl.e", fcl['e']);
+      if( DAG->has_prop(vol, "elpt.n") ) get_real_prop(vol, cellid, "elpt.n", elpt['n']);
+      if( DAG->has_prop(vol, "elpt.p") ) get_real_prop(vol, cellid, "elpt.p", elpt['p']);
+      if( DAG->has_prop(vol, "elpt.e") ) get_real_prop(vol, cellid, "elpt.e", elpt['e']);
+
+      for (std::map<char,double>::iterator it = imp.begin(); it != imp.end(); ++it)
+        lcadfile << " imp:" << it->first << "=" << it->second;
+      for (std::map<char,int>::iterator it = fcl.begin(); it != fcl.end(); ++it)
+        lcadfile << " fcl:" << it->first << "=" << it->second;
+      for (std::map<char,double>::iterator it = elpt.begin(); it != elpt.end(); ++it)
+        lcadfile << " elpt:" << it->first << "=" << it->second;
+
+      if( DAG->has_prop(vol, "bflcl") ) {
+        int bflcl = 0;
+        get_int_prop(vol, cellid, "bflcl", bflcl);
         lcadfile << " bflcl=" << bflcl;
       }
     }
