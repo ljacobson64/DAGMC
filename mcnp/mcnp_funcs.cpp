@@ -448,10 +448,7 @@ void write_lcad_old(std::ofstream &lcadfile)
 {
   moab::ErrorCode rval;
 
-  std::vector<char> part_types =
-      {'n', 'p', 'e', '|', 'q', 'u', 'v', 'f', 'h', 'l', '+', '-', 'x', 'y',
-       'o', '!', '<', '>', 'g', '/', 'z', 'k', '%', '^', 'b', '_', '~', 'c',
-       'w', '@', 'd', 't', 's', 'a', '*', '?', '#'};
+  char part_types[] = "npe|quvfhl+-xyo!<>g/zk%^b_~cw@dtsa*?#";
 
   std::vector< std::string > mcnp5_keywords;
   std::map< std::string, std::string > mcnp5_keyword_synonyms;
@@ -464,7 +461,7 @@ void write_lcad_old(std::ofstream &lcadfile)
   mcnp5_keywords.push_back("spec.reflect");
   mcnp5_keywords.push_back("white.reflect");
   mcnp5_keywords.push_back("graveyard");
-  for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit) {
+  for (char* pit = part_types; *pit; ++pit) {
     mcnp5_keywords.push_back("imp." + std::string(1, *pit));
     mcnp5_keywords.push_back("fcl." + std::string(1, *pit));
     mcnp5_keywords.push_back("elpt." + std::string(1, *pit));
@@ -495,7 +492,7 @@ void write_lcad_old(std::ofstream &lcadfile)
   // complement and graveyard, have these importances
   for (int i = 1; i <= num_cells; ++i) {
     moab::EntityHandle vol = DAG->entity_by_index(3, i);
-    for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit)
+    for (char* pit = part_types; *pit; ++pit)
       if (DAG->has_prop(vol, "imp." + std::string(1, *pit))) cimp[*pit] = 1;
   }
 
@@ -524,7 +521,7 @@ void write_lcad_old(std::ofstream &lcadfile)
         get_real_prop(vol, cellid, "rho", crho);
         std::cout << "Material and density specified for implicit complement: " << cmat << ", " << crho << std::endl;
 
-        for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit) {
+        for (char* pit = part_types; *pit; ++pit) {
           if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
             get_real_prop(vol, cellid, "imp." + std::string(1, *pit), cimp[*pit]);
           if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
@@ -568,7 +565,7 @@ void write_lcad_old(std::ofstream &lcadfile)
       for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
         imp[it->first] = 1;
 
-      for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit) {
+      for (char* pit = part_types; *pit; ++pit) {
         if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
           get_real_prop(vol, cellid, "imp." + std::string(1, *pit), imp[*pit]);
         if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
