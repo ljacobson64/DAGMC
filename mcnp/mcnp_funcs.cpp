@@ -448,39 +448,40 @@ void write_lcad_old(std::ofstream &lcadfile)
 {
   moab::ErrorCode rval;
 
+  std::vector<char> part_types =
+      {'n', 'p', 'e', '|', 'q', 'u', 'v', 'f', 'h', 'l', '+', '-', 'x', 'y',
+       'o', '!', '<', '>', 'g', '/', 'z', 'k', '%', '^', 'b', '_', '~', 'c',
+       'w', '@', 'd', 't', 's', 'a', '*', '?', '#'};
+
   std::vector< std::string > mcnp5_keywords;
   std::map< std::string, std::string > mcnp5_keyword_synonyms;
 
-  mcnp5_keywords.push_back( "mat" );
-  mcnp5_keywords.push_back( "rho" );
-  mcnp5_keywords.push_back( "comp" );
-  mcnp5_keywords.push_back( "imp.n" );
-  mcnp5_keywords.push_back( "imp.p" );
-  mcnp5_keywords.push_back( "imp.e" );
-  mcnp5_keywords.push_back( "fcl.n" );
-  mcnp5_keywords.push_back( "fcl.p" );
-  mcnp5_keywords.push_back( "fcl.e" );
-  mcnp5_keywords.push_back( "elpt.n" );
-  mcnp5_keywords.push_back( "elpt.p" );
-  mcnp5_keywords.push_back( "elpt.e" );
-  mcnp5_keywords.push_back( "bflcl" );
-  mcnp5_keywords.push_back( "tally" );
-  mcnp5_keywords.push_back( "spec.reflect" );
-  mcnp5_keywords.push_back( "white.reflect" );
-  mcnp5_keywords.push_back( "graveyard" );
+  mcnp5_keywords.push_back("mat");
+  mcnp5_keywords.push_back("rho");
+  mcnp5_keywords.push_back("comp");
+  mcnp5_keywords.push_back("bflcl");
+  mcnp5_keywords.push_back("tally");
+  mcnp5_keywords.push_back("spec.reflect");
+  mcnp5_keywords.push_back("white.reflect");
+  mcnp5_keywords.push_back("graveyard");
+  for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit) {
+    mcnp5_keywords.push_back("imp." + std::string(1, *pit));
+    mcnp5_keywords.push_back("fcl." + std::string(1, *pit));
+    mcnp5_keywords.push_back("elpt." + std::string(1, *pit));
+  }
 
-  mcnp5_keyword_synonyms[ "rest.of.world" ] = "graveyard";
-  mcnp5_keyword_synonyms[ "outside.world" ] = "graveyard";
+  mcnp5_keyword_synonyms["rest.of.world"] = "graveyard";
+  mcnp5_keyword_synonyms["outside.world"] = "graveyard";
 
   // parse data from geometry
-  rval = DAG->parse_properties( mcnp5_keywords, mcnp5_keyword_synonyms );
+  rval = DAG->parse_properties(mcnp5_keywords, mcnp5_keyword_synonyms);
   if (moab::MB_SUCCESS != rval) {
     std::cerr << "DAGMC failed to parse metadata properties" <<  std::endl;
     exit(EXIT_FAILURE);
   }
 
-  int num_cells = DAG->num_entities( 3 );
-  int num_surfs = DAG->num_entities( 2 );
+  int num_cells = DAG->num_entities(3);
+  int num_surfs = DAG->num_entities(2);
 
   int cmat = 0;
   double crho = 0;
@@ -492,25 +493,24 @@ void write_lcad_old(std::ofstream &lcadfile)
 
   // Detect which importances are used so all cells, including implicit
   // complement and graveyard, have these importances
-  for( int i = 1; i <= num_cells; ++i ) {
+  for (int i = 1; i <= num_cells; ++i) {
     moab::EntityHandle vol = DAG->entity_by_index(3, i);
-    if( DAG->has_prop( vol, "imp.n" )) cimp['n'] = 1;
-    if( DAG->has_prop( vol, "imp.p" )) cimp['p'] = 1;
-    if( DAG->has_prop( vol, "imp.e" )) cimp['e'] = 1;
+    for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit)
+      if (DAG->has_prop(vol, "imp." + std::string(1, *pit))) cimp[*pit] = 1;
   }
 
   // If no importances specified, default to neutron mode
-  if ( cimp.empty() ) cimp['n'] = 1;
+  if (cimp.empty()) cimp['n'] = 1;
 
   // write the cell cards
-  for( int i = 1; i <= num_cells; ++i ) {
+  for(int i = 1; i <= num_cells; ++i) {
 
-    moab::EntityHandle vol = DAG->entity_by_index( 3, i );
-    int cellid = DAG->id_by_index( 3, i );
+    moab::EntityHandle vol = DAG->entity_by_index(3, i);
+    int cellid = DAG->id_by_index(3, i);
 
     lcadfile << cellid;
 
-    if( DAG->has_prop(vol, "graveyard") ) {
+    if (DAG->has_prop(vol, "graveyard")) {
       // graveyard
       lcadfile << " 0";
       // importance = 0 for all particle types
@@ -518,43 +518,42 @@ void write_lcad_old(std::ofstream &lcadfile)
         lcadfile << " imp:" << it->first << "=0";
       lcadfile << " $ graveyard";
 
-      if( DAG->has_prop(vol, "comp") ) {
+      if (DAG->has_prop(vol, "comp")) {
         // information for the implicit complement has been specified
         get_int_prop(vol, cellid, "mat", cmat);
         get_real_prop(vol, cellid, "rho", crho);
-        std::cout << "Detected material and density specified for implicit complement: " << cmat << ", " << crho << std::endl;
+        std::cout << "Material and density specified for implicit complement: " << cmat << ", " << crho << std::endl;
 
-        if( DAG->has_prop(vol, "imp.n") ) get_real_prop(vol, cellid, "imp.n", cimp['n']);
-        if( DAG->has_prop(vol, "imp.p") ) get_real_prop(vol, cellid, "imp.p", cimp['p']);
-        if( DAG->has_prop(vol, "imp.e") ) get_real_prop(vol, cellid, "imp.e", cimp['e']);
-        if( DAG->has_prop(vol, "fcl.n") ) get_int_prop(vol, cellid, "fcl.n", cfcl['n']);
-        if( DAG->has_prop(vol, "fcl.p") ) get_int_prop(vol, cellid, "fcl.p", cfcl['p']);
-        if( DAG->has_prop(vol, "fcl.e") ) get_int_prop(vol, cellid, "fcl.e", cfcl['e']);
-        if( DAG->has_prop(vol, "elpt.n") ) get_real_prop(vol, cellid, "elpt.n", celpt['n']);
-        if( DAG->has_prop(vol, "elpt.p") ) get_real_prop(vol, cellid, "elpt.p", celpt['p']);
-        if( DAG->has_prop(vol, "elpt.e") ) get_real_prop(vol, cellid, "elpt.e", celpt['e']);
-        if( DAG->has_prop(vol, "bflcl") ) {
+        for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit) {
+          if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
+            get_real_prop(vol, cellid, "imp." + std::string(1, *pit), cimp[*pit]);
+          if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
+            get_int_prop(vol, cellid, "fcl." + std::string(1, *pit), cfcl[*pit]);
+          if (DAG->has_prop(vol, "elpt." + std::string(1, *pit)))
+            get_real_prop(vol, cellid, "elpt." + std::string(1, *pit), celpt[*pit]);
+        }
+        if (DAG->has_prop(vol, "bflcl")) {
           chas_bflcl = true;
           get_int_prop( vol, cellid, "bflcl", cbflcl);
         }
       }
-    } else if( DAG->is_implicit_complement(vol) ) {
+    } else if (DAG->is_implicit_complement(vol)) {
       // implicit complement
       lcadfile << " " << cmat;
-      if( cmat != 0 ) lcadfile << " " << crho;
+      if (cmat != 0) lcadfile << " " << crho;
       for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
         lcadfile << " imp:" << it->first << "=" << it->second;
       for (std::map<char,int>::iterator it = cfcl.begin(); it != cfcl.end(); ++it)
         lcadfile << " fcl:" << it->first << "=" << it->second;
       for (std::map<char,double>::iterator it = celpt.begin(); it != celpt.end(); ++it)
         lcadfile << " elpt:" << it->first << "=" << it->second;
-      if( chas_bflcl ) lcadfile << " bflcl=" << cbflcl;
+      if (chas_bflcl) lcadfile << " bflcl=" << cbflcl;
       lcadfile << " $ implicit complement";
     } else {
       // regular cell
       int mat = 0;
       get_int_prop(vol, cellid, "mat", mat);
-      if( mat == 0 ) lcadfile << " 0";
+      if (mat == 0) lcadfile << " 0";
       else {
         double rho = 1.0;
         get_real_prop(vol, cellid, "rho", rho);
@@ -569,15 +568,14 @@ void write_lcad_old(std::ofstream &lcadfile)
       for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
         imp[it->first] = 1;
 
-      if( DAG->has_prop(vol, "imp.n") ) get_real_prop(vol, cellid, "imp.n", imp['n']);
-      if( DAG->has_prop(vol, "imp.p") ) get_real_prop(vol, cellid, "imp.p", imp['p']);
-      if( DAG->has_prop(vol, "imp.e") ) get_real_prop(vol, cellid, "imp.e", imp['e']);
-      if( DAG->has_prop(vol, "fcl.n") ) get_int_prop(vol, cellid, "fcl.n", fcl['n']);
-      if( DAG->has_prop(vol, "fcl.p") ) get_int_prop(vol, cellid, "fcl.p", fcl['p']);
-      if( DAG->has_prop(vol, "fcl.e") ) get_int_prop(vol, cellid, "fcl.e", fcl['e']);
-      if( DAG->has_prop(vol, "elpt.n") ) get_real_prop(vol, cellid, "elpt.n", elpt['n']);
-      if( DAG->has_prop(vol, "elpt.p") ) get_real_prop(vol, cellid, "elpt.p", elpt['p']);
-      if( DAG->has_prop(vol, "elpt.e") ) get_real_prop(vol, cellid, "elpt.e", elpt['e']);
+      for (std::vector<char>::iterator pit = part_types.begin(); pit != part_types.end(); ++pit) {
+        if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
+          get_real_prop(vol, cellid, "imp." + std::string(1, *pit), imp[*pit]);
+        if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
+          get_int_prop(vol, cellid, "fcl." + std::string(1, *pit), fcl[*pit]);
+        if (DAG->has_prop(vol, "elpt." + std::string(1, *pit)))
+          get_real_prop(vol, cellid, "elpt." + std::string(1, *pit), elpt[*pit]);
+      }
 
       for (std::map<char,double>::iterator it = imp.begin(); it != imp.end(); ++it)
         lcadfile << " imp:" << it->first << "=" << it->second;
@@ -586,7 +584,7 @@ void write_lcad_old(std::ofstream &lcadfile)
       for (std::map<char,double>::iterator it = elpt.begin(); it != elpt.end(); ++it)
         lcadfile << " elpt:" << it->first << "=" << it->second;
 
-      if( DAG->has_prop(vol, "bflcl") ) {
+      if (DAG->has_prop(vol, "bflcl")) {
         int bflcl = 0;
         get_int_prop(vol, cellid, "bflcl", bflcl);
         lcadfile << " bflcl=" << bflcl;
