@@ -483,7 +483,7 @@ void write_lcad_old(std::ofstream &lcadfile)
   int cmat = 0;
   double crho = 0;
   std::map<char, double> cimp;  // importances
-  std::map<char, int> cfcl;  // forced collisions
+  std::map<char, double> cfcl;  // forced collisions
   std::map<char, double> celpt;  // energy cutoffs
   int cbflcl = 0;  // magnetic fields
   bool chas_bflcl = false;
@@ -525,7 +525,7 @@ void write_lcad_old(std::ofstream &lcadfile)
           if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
             get_real_prop(vol, cellid, "imp." + std::string(1, *pit), cimp[*pit]);
           if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
-            get_int_prop(vol, cellid, "fcl." + std::string(1, *pit), cfcl[*pit]);
+            get_real_prop(vol, cellid, "fcl." + std::string(1, *pit), cfcl[*pit]);
           if (DAG->has_prop(vol, "elpt." + std::string(1, *pit)))
             get_real_prop(vol, cellid, "elpt." + std::string(1, *pit), celpt[*pit]);
         }
@@ -540,7 +540,7 @@ void write_lcad_old(std::ofstream &lcadfile)
       if (cmat != 0) lcadfile << " " << crho;
       for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
         lcadfile << " imp:" << it->first << "=" << it->second;
-      for (std::map<char,int>::iterator it = cfcl.begin(); it != cfcl.end(); ++it)
+      for (std::map<char,double>::iterator it = cfcl.begin(); it != cfcl.end(); ++it)
         lcadfile << " fcl:" << it->first << "=" << it->second;
       for (std::map<char,double>::iterator it = celpt.begin(); it != celpt.end(); ++it)
         lcadfile << " elpt:" << it->first << "=" << it->second;
@@ -558,7 +558,7 @@ void write_lcad_old(std::ofstream &lcadfile)
       }
 
       std::map<char, double> imp;
-      std::map<char, int> fcl;
+      std::map<char, double> fcl;
       std::map<char, double> elpt;
 
       // default to importance = 1 if not specified
@@ -569,14 +569,14 @@ void write_lcad_old(std::ofstream &lcadfile)
         if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
           get_real_prop(vol, cellid, "imp." + std::string(1, *pit), imp[*pit]);
         if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
-          get_int_prop(vol, cellid, "fcl." + std::string(1, *pit), fcl[*pit]);
+          get_real_prop(vol, cellid, "fcl." + std::string(1, *pit), fcl[*pit]);
         if (DAG->has_prop(vol, "elpt." + std::string(1, *pit)))
           get_real_prop(vol, cellid, "elpt." + std::string(1, *pit), elpt[*pit]);
       }
 
       for (std::map<char,double>::iterator it = imp.begin(); it != imp.end(); ++it)
         lcadfile << " imp:" << it->first << "=" << it->second;
-      for (std::map<char,int>::iterator it = fcl.begin(); it != fcl.end(); ++it)
+      for (std::map<char,double>::iterator it = fcl.begin(); it != fcl.end(); ++it)
         lcadfile << " fcl:" << it->first << "=" << it->second;
       for (std::map<char,double>::iterator it = elpt.begin(); it != elpt.end(); ++it)
         lcadfile << " elpt:" << it->first << "=" << it->second;
