@@ -249,20 +249,6 @@ void dagmcwritemcnp_(char* dagfile, char *lfile, int *llen)  // file with cell/s
 
   std::cout << full_dagfilename << std::endl;
 
-  /*
-  if ( !old_method ) {
-    try
-      {
-  test_mat.from_hdf5(full_dagfilename,"/materials");
-      }
-    catch (const std::exception &except) // catch the exception from from_hdf5
-      {
-  std::cout << "No Materials found in the file, " << dagfile << std::endl;
-  std::cout << "Assuming that the groups are marked in old style" << std::endl;
-  old_method = true;
-      }
-  }
-  */
   if ( workflow_data.material_library.size() == 0 )
     old_method = true;
 
@@ -858,15 +844,6 @@ void dagmc_particle_terminate_( )
   std::cout << "particle_terminate:" << std::endl;
 #endif
 }
-
-//void dagmc_rollback_history_( )
-//{
-//  history.reset_to_last_intersection();
-//
-//#ifdef TRACE_DAGMC_CALLS
-//  std::cout << "particle_reset_to_last_intersection:" << std::endl;
-//#endif
-//}
 
 // *ih              - volue index
 // *uuu, *vvv, *www - ray direction
