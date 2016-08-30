@@ -450,28 +450,28 @@ void write_lcad_old(std::ofstream &lcadfile)
 
   char part_types[] = "npe|quvfhl+-xyo!<>g/zk%^b_~cw@dtsa*?#";
 
-  std::vector< std::string > mcnp5_keywords;
-  std::map< std::string, std::string > mcnp5_keyword_synonyms;
+  std::vector< std::string > mcnp_keywords;
+  std::map< std::string, std::string > mcnp_keyword_synonyms;
 
-  mcnp5_keywords.push_back("mat");
-  mcnp5_keywords.push_back("rho");
-  mcnp5_keywords.push_back("comp");
-  mcnp5_keywords.push_back("bflcl");
-  mcnp5_keywords.push_back("tally");
-  mcnp5_keywords.push_back("spec.reflect");
-  mcnp5_keywords.push_back("white.reflect");
-  mcnp5_keywords.push_back("graveyard");
+  mcnp_keywords.push_back("mat");
+  mcnp_keywords.push_back("rho");
+  mcnp_keywords.push_back("comp");
+  mcnp_keywords.push_back("bflcl");
+  mcnp_keywords.push_back("tally");
+  mcnp_keywords.push_back("spec.reflect");
+  mcnp_keywords.push_back("white.reflect");
+  mcnp_keywords.push_back("graveyard");
   for (char* pit = part_types; *pit; ++pit) {
-    mcnp5_keywords.push_back("imp." + std::string(1, *pit));
-    mcnp5_keywords.push_back("fcl." + std::string(1, *pit));
-    mcnp5_keywords.push_back("elpt." + std::string(1, *pit));
+    mcnp_keywords.push_back("imp." + std::string(1, *pit));
+    mcnp_keywords.push_back("fcl." + std::string(1, *pit));
+    mcnp_keywords.push_back("elpt." + std::string(1, *pit));
   }
 
-  mcnp5_keyword_synonyms["rest.of.world"] = "graveyard";
-  mcnp5_keyword_synonyms["outside.world"] = "graveyard";
+  mcnp_keyword_synonyms["rest.of.world"] = "graveyard";
+  mcnp_keyword_synonyms["outside.world"] = "graveyard";
 
   // parse data from geometry
-  rval = DAG->parse_properties(mcnp5_keywords, mcnp5_keyword_synonyms);
+  rval = DAG->parse_properties(mcnp_keywords, mcnp_keyword_synonyms);
   if (moab::MB_SUCCESS != rval) {
     std::cerr << "DAGMC failed to parse metadata properties" <<  std::endl;
     exit(EXIT_FAILURE);
@@ -1127,20 +1127,20 @@ std::map<moab::EntityHandle,std::vector<std::string> > get_property_assignments(
 
   std::map<moab::EntityHandle,std::vector<std::string> > prop_map;
 
-  std::vector< std::string > mcnp5_keywords;
-  std::map< std::string, std::string > mcnp5_keyword_synonyms;
+  std::vector< std::string > mcnp_keywords;
+  std::map< std::string, std::string > mcnp_keyword_synonyms;
 
   // populate keywords
-  mcnp5_keywords.push_back( "mat" );
-  mcnp5_keywords.push_back( "rho" );
-  mcnp5_keywords.push_back( "tally" );
-  mcnp5_keywords.push_back( "boundary" );
+  mcnp_keywords.push_back( "mat" );
+  mcnp_keywords.push_back( "rho" );
+  mcnp_keywords.push_back( "tally" );
+  mcnp_keywords.push_back( "boundary" );
 
   // get initial sizes
   int num_entities = DAG->num_entities( dimension );
 
   // parse data from geometry
-  moab::ErrorCode rval = DAG->parse_properties( mcnp5_keywords, mcnp5_keyword_synonyms,delimiters.c_str());
+  moab::ErrorCode rval = DAG->parse_properties( mcnp_keywords, mcnp_keyword_synonyms,delimiters.c_str());
 
   if (moab::MB_SUCCESS != rval) {
     std::cerr << "DAGMC failed to parse metadata properties" <<  std::endl;
