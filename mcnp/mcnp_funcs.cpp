@@ -237,7 +237,7 @@ static char* get_tallyspec( std::string spec, int& dim )
 
 }
 
-void dagmcwritemcnp_(char* dagfile, char *lfile, int *llen)  // file with cell/surface cards
+void dagmcwritemcnp_(char *dagfile, char *lfile, int *llen, char *mcver)  // file with cell/surface cards
 {
   bool old_method = false;
 
@@ -270,7 +270,7 @@ void dagmcwritemcnp_(char* dagfile, char *lfile, int *llen)  // file with cell/s
   std::ofstream lcadfile( lfname.c_str(), std::ios::out );
 
   if ( old_method )
-    write_lcad_old(lcadfile);
+    write_lcad_old(lcadfile, mcver[0]);
   else
     write_lcad_uwuw(lcadfile, workflow_data);
 
@@ -428,13 +428,13 @@ void write_lcad_uwuw(std::ofstream &lcadfile, UWUW workflow_data)
 
 }
 
-
-
-void write_lcad_old(std::ofstream &lcadfile)
+void write_lcad_old(std::ofstream &lcadfile, char mcver)
 {
   moab::ErrorCode rval;
 
-  char part_types[] = "npe|quvfhl+-xyo!<>g/zk%^b_~cw@dtsa*?#";
+  std::string part_types;
+  if (mcver == '6') part_types = "npe|quvfhl+-xyo!<>g/zk%^b_~cw@dtsa*?#";
+  else part_types = "npe";
 
   std::vector< std::string > mcnp_keywords;
   std::map< std::string, std::string > mcnp_keyword_synonyms;
@@ -442,16 +442,16 @@ void write_lcad_old(std::ofstream &lcadfile)
   mcnp_keywords.push_back("mat");
   mcnp_keywords.push_back("rho");
   mcnp_keywords.push_back("comp");
-  mcnp_keywords.push_back("bflcl");
   mcnp_keywords.push_back("tally");
   mcnp_keywords.push_back("spec.reflect");
   mcnp_keywords.push_back("white.reflect");
   mcnp_keywords.push_back("graveyard");
-  for (char* pit = part_types; *pit; ++pit) {
+  for (std::string::iterator pit = part_types.begin(); pit != part_types.end(); pit++) {
     mcnp_keywords.push_back("imp." + std::string(1, *pit));
     mcnp_keywords.push_back("fcl." + std::string(1, *pit));
     mcnp_keywords.push_back("elpt." + std::string(1, *pit));
   }
+  if (mcver == '6') mcnp_keywords.push_back("bflcl");
 
   mcnp_keyword_synonyms["rest.of.world"] = "graveyard";
   mcnp_keyword_synonyms["outside.world"] = "graveyard";
@@ -478,7 +478,7 @@ void write_lcad_old(std::ofstream &lcadfile)
   // complement and graveyard, have these importances
   for (int i = 1; i <= num_cells; ++i) {
     moab::EntityHandle vol = DAG->entity_by_index(3, i);
-    for (char* pit = part_types; *pit; ++pit)
+    for (std::string::iterator pit = part_types.begin(); pit != part_types.end(); pit++)
       if (DAG->has_prop(vol, "imp." + std::string(1, *pit))) cimp[*pit] = 1;
   }
 
@@ -507,7 +507,7 @@ void write_lcad_old(std::ofstream &lcadfile)
         get_real_prop(vol, cellid, "rho", crho);
         std::cout << "Material and density specified for implicit complement: " << cmat << ", " << crho << std::endl;
 
-        for (char* pit = part_types; *pit; ++pit) {
+        for (std::string::iterator pit = part_types.begin(); pit != part_types.end(); pit++) {
           if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
             get_real_prop(vol, cellid, "imp." + std::string(1, *pit), cimp[*pit]);
           if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
@@ -515,9 +515,11 @@ void write_lcad_old(std::ofstream &lcadfile)
           if (DAG->has_prop(vol, "elpt." + std::string(1, *pit)))
             get_real_prop(vol, cellid, "elpt." + std::string(1, *pit), celpt[*pit]);
         }
-        if (DAG->has_prop(vol, "bflcl")) {
-          chas_bflcl = true;
-          get_int_prop( vol, cellid, "bflcl", cbflcl);
+        if (mcver == '6') {
+          if (DAG->has_prop(vol, "bflcl")) {
+            chas_bflcl = true;
+            get_int_prop( vol, cellid, "bflcl", cbflcl);
+          }
         }
       }
     } else if (DAG->is_implicit_complement(vol)) {
@@ -530,7 +532,9 @@ void write_lcad_old(std::ofstream &lcadfile)
         lcadfile << " fcl:" << it->first << "=" << it->second;
       for (std::map<char,double>::iterator it = celpt.begin(); it != celpt.end(); ++it)
         lcadfile << " elpt:" << it->first << "=" << it->second;
-      if (chas_bflcl) lcadfile << " bflcl=" << cbflcl;
+      if (mcver == '6') {
+        if (chas_bflcl) lcadfile << " bflcl=" << cbflcl;
+      }
       lcadfile << " $ implicit complement";
     } else {
       // regular cell
@@ -551,7 +555,7 @@ void write_lcad_old(std::ofstream &lcadfile)
       for (std::map<char,double>::iterator it = cimp.begin(); it != cimp.end(); ++it)
         imp[it->first] = 1;
 
-      for (char* pit = part_types; *pit; ++pit) {
+      for (std::string::iterator pit = part_types.begin(); pit != part_types.end(); pit++) {
         if (DAG->has_prop(vol, "imp." + std::string(1, *pit)))
           get_real_prop(vol, cellid, "imp." + std::string(1, *pit), imp[*pit]);
         if (DAG->has_prop(vol, "fcl." + std::string(1, *pit)))
@@ -567,10 +571,12 @@ void write_lcad_old(std::ofstream &lcadfile)
       for (std::map<char,double>::iterator it = elpt.begin(); it != elpt.end(); ++it)
         lcadfile << " elpt:" << it->first << "=" << it->second;
 
-      if (DAG->has_prop(vol, "bflcl")) {
-        int bflcl = 0;
-        get_int_prop(vol, cellid, "bflcl", bflcl);
-        lcadfile << " bflcl=" << bflcl;
+      if (mcver == '6') {
+        if (DAG->has_prop(vol, "bflcl")) {
+          int bflcl = 0;
+          get_int_prop(vol, cellid, "bflcl", bflcl);
+          lcadfile << " bflcl=" << bflcl;
+        }
       }
     }
 

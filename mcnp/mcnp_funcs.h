@@ -52,7 +52,7 @@ extern "C" {
   /* parse metadata and write applications specific data for: MCNP5
    * includes the UWUW step
    */
-  void dagmcwritemcnp_(char *dagmc_file, char *lfile, int *llen);
+  void dagmcwritemcnp_(char *dagmc_file, char *lfile, int *llen, char *mcver);
 
   /* Get normal of surface with id *jsu at location (*xxx,*yyy,*zzz) and store
      in three doubles at ang (an arry of length 3) */
@@ -140,7 +140,7 @@ extern "C" {
    * \brief Performs the write of the lcad file using the "old" method
    * \param[in] output file stream pointing to the lcadfile
    */
-  void write_lcad_old(std::ofstream &lcadfile);
+  void write_lcad_old(std::ofstream &lcadfile, char mcver);
 
   /**
    * \brief performs the write of the lcadfile for the UWUW workflow
