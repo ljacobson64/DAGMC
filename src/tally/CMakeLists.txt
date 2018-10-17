@@ -9,7 +9,7 @@ file(GLOB PUB_HEADERS "*.hpp")
 set(LINK_LIBS dagmc)
 set(LINK_LIBS_EXTERN_NAMES)
 
-dagmc_install_library(dagtally)
+dagmc_install_library(dagtally "${SRC_FILES}" "${PUB_HEADERS}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")
 
 if (BUILD_TESTS)
   add_subdirectory(tests)

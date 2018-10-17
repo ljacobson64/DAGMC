@@ -10,7 +10,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/dagmc)
 include_directories(${CMAKE_BINARY_DIR}/src/dagmc)
 include_directories(${CMAKE_SOURCE_DIR}/src/pyne)
 
-dagmc_install_library(uwuw)
+dagmc_install_library(uwuw "${SRC_FILES}" "${PUB_HEADERS}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")
 
 add_subdirectory(app)
 if (BUILD_TESTS)

@@ -5,4 +5,4 @@ set(LINK_LIBS_EXTERN_NAMES)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/uwuw)
 
-dagmc_install_exe(uwuw_preproc)
+dagmc_install_exe(uwuw_preproc "${SRC_FILES}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")

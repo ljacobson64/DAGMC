@@ -7,4 +7,4 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/uwuw)
 include_directories(${CMAKE_SOURCE_DIR}/src/geant4)
 
-dagmc_install_exe(DagGeant4)
+dagmc_install_exe(DagGeant4 "${SRC_FILES}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")

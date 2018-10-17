@@ -13,7 +13,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/dagmc)
 include_directories(${CMAKE_BINARY_DIR}/src/dagmc)
 include_directories(${CMAKE_SOURCE_DIR}/src/uwuw)
 
-dagmc_install_library(fludag)
+dagmc_install_library(fludag "${SRC_FILES}" "${PUB_HEADERS}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")
 
 add_subdirectory(app)
 if (BUILD_TESTS)

@@ -176,5 +176,5 @@ message(STATUS "DAG-MCNP5 Fortran_FLAGS_${CMAKE_BUILD_TYPE_UPPER}: ${CMAKE_Fortr
 message(STATUS "DAG-MCNP5 compile definitions: ${COMPDEFS}")
 
 # Install
-dagmc_install_exe(${MCNP_EXEC})
+dagmc_install_exe(${MCNP_EXEC} "${SRC_FILES}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")
 set_target_properties(${MCNP_EXEC} PROPERTIES LINKER_LANGUAGE Fortran)

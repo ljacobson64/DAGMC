@@ -166,29 +166,6 @@ macro (dagmc_setup_flags)
   message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
 endmacro ()
 
-# Figure out what LINK_LIBS_SHARED and LINK_LIBS_STATIC should be based on the
-# values of LINK_LIBS and LINK_LIBS_EXTERN_NAMES
-macro (dagmc_get_link_libs)
-  set(LINK_LIBS_SHARED)
-  set(LINK_LIBS_STATIC)
-
-  foreach (extern_name IN LISTS LINK_LIBS_EXTERN_NAMES)
-    list(APPEND LINK_LIBS_SHARED ${${extern_name}_SHARED})
-    list(APPEND LINK_LIBS_STATIC ${${extern_name}_STATIC})
-  endforeach ()
-
-  foreach (link_lib IN LISTS LINK_LIBS)
-    list(FIND DAGMC_LIBRARY_LIST ${link_lib} index)
-    if (index STREQUAL "-1")
-      list(APPEND LINK_LIBS_SHARED ${link_lib})
-      list(APPEND LINK_LIBS_STATIC ${link_lib})
-    else ()
-      list(APPEND LINK_LIBS_SHARED ${link_lib}-shared)
-      list(APPEND LINK_LIBS_STATIC ${link_lib}-static)
-    endif ()
-  endforeach ()
-endmacro ()
-
 # Setup the configuration file and install
 macro (dagmc_make_configure_files)
   message("")
@@ -201,30 +178,52 @@ macro (dagmc_make_configure_files)
   install(EXPORT DAGMCTargets DESTINATION ${INSTALL_LIB_DIR}/cmake/)
 endmacro ()
 
-# To use the dagmc_install macros, the following lists must be defined:
-#   SRC_FILES: source files
-#   PUB_HEADERS: public header files
-#   LINK_LIBS: e.g. dagmc, pyne_dagmc, uwuw, lapack, gfortran
-#   LINK_LIBS_EXTERN_NAMES: e.g. MOAB_LIBRARIES
+# Figure out what _link_libs_shared and _link_libs_static should be based on the
+# values of _link_libs and _link_libs_extern_names
+macro (dagmc_get_link_libs _link_libs _link_libs_extern_names)
+  set(_link_libs_shared)
+  set(_link_libs_static)
+
+  foreach (extern_name IN ITEMS ${_link_libs_extern_names})
+    list(APPEND _link_libs_shared ${${extern_name}_SHARED})
+    list(APPEND _link_libs_static ${${extern_name}_STATIC})
+  endforeach ()
+
+  foreach (link_lib IN ITEMS ${_link_libs})
+    list(FIND DAGMC_LIBRARY_LIST ${link_lib} index)
+    if (index STREQUAL "-1")
+      list(APPEND _link_libs_shared ${link_lib})
+      list(APPEND _link_libs_static ${link_lib})
+    else ()
+      list(APPEND _link_libs_shared ${link_lib}-shared)
+      list(APPEND _link_libs_static ${link_lib}-static)
+    endif ()
+  endforeach ()
+endmacro ()
 
 # Install a library in both shared and static mode
-macro (dagmc_install_library lib_name)
+macro (dagmc_install_library lib_name _src_files _pub_headers _link_libs _link_libs_extern_names)
+#   _src_files: source files
+#   _pub_headers: public header files
+#   _link_libs: e.g. dagmc, pyne_dagmc, uwuw, lapack, gfortran
+#   _link_libs_extern_names: e.g. HDF5_LIBRARIES, MOAB_LIBRARIES
+
   message(STATUS "Building library: ${lib_name}")
 
-  dagmc_get_link_libs()
+  dagmc_get_link_libs("${_link_libs}" "${_link_libs_extern_names}")
 
   if (BUILD_SHARED_LIBS)
-    add_library(${lib_name}-shared SHARED ${SRC_FILES})
-      set_target_properties(${lib_name}-shared
-        PROPERTIES OUTPUT_NAME ${lib_name}
-        PUBLIC_HEADER "${PUB_HEADERS}")
+    add_library(${lib_name}-shared SHARED ${_src_files})
+    set_target_properties(${lib_name}-shared
+      PROPERTIES OUTPUT_NAME ${lib_name}
+                 PUBLIC_HEADER "${_pub_headers}")
     if (BUILD_RPATH)
       set_target_properties(${lib_name}-shared
         PROPERTIES INSTALL_RPATH "${INSTALL_RPATH_DIRS}"
                    INSTALL_RPATH_USE_LINK_PATH TRUE)
     endif ()
-    message("LINK LIBS: ${LINK_LIBS_SHARED}")
-    target_link_libraries(${lib_name}-shared PUBLIC ${LINK_LIBS_SHARED})
+    message(STATUS "_link_libs_shared: ${_link_libs_shared}")
+    target_link_libraries(${lib_name}-shared ${_link_libs_shared})
     if (DOUBLE_DOWN)
       target_compile_definitions(${lib_name}-shared PRIVATE DOUBLE_DOWN)
       target_link_libraries(${lib_name}-shared PUBLIC dd)
@@ -238,14 +237,14 @@ macro (dagmc_install_library lib_name)
   endif ()
 
   if (BUILD_STATIC_LIBS)
-    add_library(${lib_name}-static STATIC ${SRC_FILES})
+    add_library(${lib_name}-static STATIC ${_src_files})
     set_target_properties(${lib_name}-static
       PROPERTIES OUTPUT_NAME ${lib_name})
     if (BUILD_RPATH)
       set_target_properties(${lib_name}-static
         PROPERTIES INSTALL_RPATH "" INSTALL_RPATH_USE_LINK_PATH FALSE)
     endif ()
-    target_link_libraries(${lib_name}-static ${LINK_LIBS_STATIC})
+    target_link_libraries(${lib_name}-static ${_link_libs_static})
     target_include_directories(${lib_name}-static INTERFACE $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
                                                             ${MOAB_INCLUDE_DIRS})
 
@@ -260,65 +259,74 @@ macro (dagmc_install_library lib_name)
 endmacro ()
 
 # Install an executable
-macro (dagmc_install_exe exe_name)
+macro (dagmc_install_exe exe_name _src_files _link_libs _link_libs_extern_names)
+#   _src_files: source files
+#   _link_libs: e.g. dagmc, pyne_dagmc, uwuw, lapack, gfortran
+#   _link_libs_extern_names: e.g. HDF5_LIBRARIES, MOAB_LIBRARIES
+
   message(STATUS "Building executable: ${exe_name}")
 
-  dagmc_get_link_libs()
+  dagmc_get_link_libs("${_link_libs}" "${_link_libs_extern_names}")
 
-  add_executable(${exe_name} ${SRC_FILES})
+  add_executable(${exe_name} ${_src_files})
   if (BUILD_RPATH)
     if (BUILD_STATIC_EXE)
       set_target_properties(${exe_name}
         PROPERTIES INSTALL_RPATH ""
                    INSTALL_RPATH_USE_LINK_PATH FALSE)
-      target_link_libraries(${exe_name} ${LINK_LIBS_STATIC})
+      target_link_libraries(${exe_name} ${_link_libs_static})
     else ()
       set_target_properties(${exe_name}
         PROPERTIES INSTALL_RPATH "${INSTALL_RPATH_DIRS}"
                    INSTALL_RPATH_USE_LINK_PATH TRUE)
-      target_link_libraries(${exe_name} PUBLIC ${LINK_LIBS_SHARED})
+      target_link_libraries(${exe_name} PUBLIC ${_link_libs_shared})
     endif ()
   else ()
     if (BUILD_STATIC_EXE)
-      target_link_libraries(${exe_name} ${LINK_LIBS_STATIC})
+      target_link_libraries(${exe_name} ${_link_libs_static})
     else ()
-      target_link_libraries(${exe_name} PUBLIC ${LINK_LIBS_SHARED})
+      target_link_libraries(${exe_name} PUBLIC ${_link_libs_shared})
     endif ()
   endif ()
   install(TARGETS ${exe_name} DESTINATION ${INSTALL_BIN_DIR})
 endmacro ()
 
 # Install a unit test
-macro (dagmc_install_test test_name ext)
-  message(STATUS "Building unit tests: ${test_name}")
+macro (dagmc_install_test _test_name _ext _drivers _link_libs _link_libs_extern_names)
+#   _test_name: test name
+#   _ext: test name extension; for example ".cc" or ".cpp"
+#   _drivers: driver source files
+#   _link_libs: e.g. dagmc, pyne_dagmc, uwuw, lapack, gfortran
+#   _link_libs_extern_names: e.g. HDF5_LIBRARIES, MOAB_LIBRARIES
 
-  list(APPEND LINK_LIBS gtest)
+  message(STATUS "Building unit tests: ${_test_name}")
 
-  dagmc_get_link_libs()
+  dagmc_get_link_libs("${_link_libs}" "${_link_libs_extern_names}")
 
-  add_executable(${test_name} ${test_name}.${ext} ${DRIVERS})
+  add_executable(${_test_name} ${_test_name}.${_ext} ${_drivers})
+  target_link_libraries(${_test_name} gtest)
   if (BUILD_RPATH)
     if (BUILD_STATIC_EXE)
-      set_target_properties(${test_name}
+      set_target_properties(${_test_name}
         PROPERTIES INSTALL_RPATH ""
                    INSTALL_RPATH_USE_LINK_PATH FALSE)
-      target_link_libraries(${test_name} ${LINK_LIBS_STATIC})
+      target_link_libraries(${_test_name} ${_link_libs_static})
     else ()
-      set_target_properties(${test_name}
+      set_target_properties(${_test_name}
         PROPERTIES INSTALL_RPATH "${INSTALL_RPATH_DIRS}"
                    INSTALL_RPATH_USE_LINK_PATH TRUE)
-      target_link_libraries(${test_name} ${LINK_LIBS_SHARED})
+      target_link_libraries(${_test_name} ${_link_libs_shared})
     endif ()
   else ()
     if (BUILD_STATIC_EXE)
-      target_link_libraries(${test_name} ${LINK_LIBS_STATIC})
+      target_link_libraries(${_test_name} ${_link_libs_static})
     else ()
-      target_link_libraries(${test_name} ${LINK_LIBS_SHARED})
+      target_link_libraries(${_test_name} ${_link_libs_shared})
     endif ()
   endif ()
-  install(TARGETS ${test_name} DESTINATION ${INSTALL_TESTS_DIR})
-  add_test(NAME ${test_name} COMMAND ${test_name})
-  set_property(TEST ${test_name} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=''")
+  install(TARGETS ${_test_name} DESTINATION ${INSTALL_TESTS_DIR})
+  add_test(NAME ${_test_name} COMMAND ${_test_name})
+  set_property(TEST ${_test_name} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=''")
 endmacro ()
 
 # Install a file needed for unit testing

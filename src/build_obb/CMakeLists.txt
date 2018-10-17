@@ -8,4 +8,4 @@ set(LINK_LIBS_EXTERN_NAMES)
 include_directories(${CMAKE_SOURCE_DIR}/src/dagmc)
 include_directories(${CMAKE_BINARY_DIR}/src/dagmc)
 
-dagmc_install_exe(build_obb)
+dagmc_install_exe(build_obb "${SRC_FILES}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")

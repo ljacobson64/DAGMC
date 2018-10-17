@@ -5,4 +5,4 @@ set(LINK_LIBS_EXTERN_NAMES)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/fluka)
 
-dagmc_install_exe(mainfludag)
+dagmc_install_exe(mainfludag "${SRC_FILES}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")

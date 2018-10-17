@@ -12,7 +12,7 @@ set(LINK_LIBS_EXTERN_NAMES MOAB_LIBRARIES HDF5_LIBRARIES)
 
 include_directories(${CMAKE_BINARY_DIR}/src/dagmc)
 
-dagmc_install_library(dagmc)
+dagmc_install_library(dagmc "${SRC_FILES}" "${PUB_HEADERS}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")
 
 add_subdirectory(tools)
 

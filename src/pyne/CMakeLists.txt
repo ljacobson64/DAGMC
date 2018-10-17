@@ -12,4 +12,4 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O0 -g")
 endif ()
 
-dagmc_install_library(pyne_dagmc)
+dagmc_install_library(pyne_dagmc "${SRC_FILES}" "${PUB_HEADERS}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")

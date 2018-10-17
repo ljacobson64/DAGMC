@@ -7,7 +7,7 @@ include_directories(${GTEST_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src/fluka)
 
 # Note: this test is known to fail
-dagmc_install_test(fludag_unit_tests cpp)
+dagmc_install_test(fludag_unit_tests cpp "${DRIVERS}" "${LINK_LIBS}" "${LINK_LIBS_EXTERN_NAMES}")
 
 dagmc_install_test_file(slabs.h5m)
 # We use a file from the MCNP test folder, so if not building MCNP5/6 we have to install it
